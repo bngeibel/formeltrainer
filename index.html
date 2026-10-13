@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktiver Formeltrainer - Berufsschule & AV</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    keyframes: {
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-8px)' },
+                            '50%': { transform: 'translateX(8px)' },
+                            '75%': { transform: 'translateX(-8px)' },
+                        }
+                    },
+                    animation: {
+                        shake: 'shake 0.4s ease-in-out',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .katex-display { margin: 0.5em 0 !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+    <header class="bg-indigo-600 text-white p-6 shadow-md rounded-b-3xl mb-8 max-w-5xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-2">📐 Interaktiver Formeltrainer</h1>
+        <p class="text-center text-indigo-100 md:text-lg">Berufsschule & Arbeitsvorbereitung: Trainiere das Umstellen von Formeln Schritt für Schritt.</p>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 pb-12">
+        
+        <!-- Bereich zur Auswahl der Formel -->
+        <div id="selection-area" class="fade-in">
+            <h2 class="text-2xl font-bold mb-6 text-center text-slate-700">Wähle eine Formel zum Üben:</h2>
+            
+            <!-- Level Tabs (Stufen 1 bis 3) -->
+            <div class="flex flex-wrap justify-center gap-2 mb-8 border-b border-slate-200 pb-4">
+                <button onclick="filterLevel(1)" id="tab-lvl-1" class="px-6 py-2 rounded-full font-semibold transition-all bg-indigo-600 text-white shadow-md">Stufe 1: + / -</button>
+                <button onclick="filterLevel(2)" id="tab-lvl-2" class="px-6 py-2 rounded-full font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300">Stufe 2: * / ÷</button>
+                <button onclick="filterLevel(3)" id="tab-lvl-3" class="px-6 py-2 rounded-full font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300">Stufe 3: Gemischt</button>
+            </div>
+
+            <div id="formula-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Formelkarten werden hier generiert -->
+            </div>
+        </div>
+
+        <div id="trainer-area" class="hidden fade-in max-w-3xl mx-auto">
+            <button onclick="showSelectionArea()" class="mb-6 text-indigo-600 hover:text-indigo-800 font-semibold flex items-center bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
+                ← Zurück zur Auswahl
+            </button>
+
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-10 border border-slate-100">
+                <div class="text-center mb-8">
+                    <h2 id="trainer-title" class="text-2xl font-bold text-slate-800 mb-2">Formelname</h2>
+                    <p class="text-lg text-slate-500 font-medium bg-slate-100 inline-block px-4 py-1 rounded-full">
+                        Stelle die Formel nach <span id="trainer-target" class="font-bold text-indigo-600 text-xl mx-1"></span> um!
+                    </p>
+                </div>
+
+                <!-- Verlauf der vorherigen Schritte -->
+                <div id="history-container" class="space-y-4 mb-6 opacity-70">
+                    <!-- Vorherige Schritte kommen hier rein -->
+                </div>
+
+                <!-- Aktuelle Gleichung -->
+                <div class="bg-indigo-50 border-2 border-indigo-100 rounded-xl p-6 mb-8 transform transition-all duration-300 hover:shadow-md">
+                    <div id="current-equation" class="text-2xl md:text-3xl text-center">
+                        <!-- KaTeX Equation -->
+                    </div>
+                </div>
+
+                <div id="action-area">
+                    <h3 class="text-center text-lg font-semibold text-slate-600 mb-4">Was ist der nächste Rechenschritt?</h3>
+                    <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Optionsbuttons werden hier generiert -->
+                    </div>
+                    <div id="feedback-msg" class="text-center mt-4 h-6 text-red-500 font-semibold hidden">
+                        Das hilft hier leider nicht weiter. Versuche etwas anderes!
+                    </div>
+                </div>
+
+                <!-- Erfolgsmeldung am Ende -->
+                <div id="success-area" class="hidden text-center mt-8 p-6 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+                    <h3 class="text-2xl font-bold text-emerald-600 mb-2">🎉 Super gemacht!</h3>
+                    <p class="text-slate-700 mb-6">Du hast die Formel erfolgreich umgestellt.</p>
+                    <button onclick="showSelectionArea()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:-translate-y-1">
+                        Neue Formel üben
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const formulaData = [
+            // ==========================================
+            // --- STUFE 1: Nur Strichrechnung (+ / -) ---
+            // ==========================================
+            {
+                id: "brutto", level: 1, name: "Bruttogewicht", baseEq: "m_{brutto} = m_{netto} + m_{tara}",
+                targets: {
+                    "m_{netto}": {
+                        steps: [
+                            { eq: "m_{brutto} = m_{netto} + m_{tara}", options: [{ op: "| - m_{tara}", isText: false, correct: true }, { op: "| - m_{netto}", isText: false, correct: false }] },
+                            { eq: "m_{brutto} - m_{tara} = m_{netto}", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + m_{tara}", isText: false, correct: false }] },
+                            { eq: "m_{netto} = m_{brutto} - m_{tara}", options: [] }
+                        ]
+                    },
+                    "m_{tara}": {
+                        steps: [
+                            { eq: "m_{brutto} = m_{netto} + m_{tara}", options: [{ op: "| - m_{netto}", isText: false, correct: true }, { op: "| - m_{tara}", isText: false, correct: false }] },
+                            { eq: "m_{brutto} - m_{netto} = m_{tara}", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + m_{netto}", isText: false, correct: false }] },
+                            { eq: "m_{tara} = m_{brutto} - m_{netto}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "deltaT", level: 1, name: "Temperaturdifferenz", baseEq: "\\Delta T = T_2 - T_1",
+                targets: {
+                    "T_2": {
+                        steps: [
+                            { eq: "\\Delta T = T_2 - T_1", options: [{ op: "| + T_1", isText: false, correct: true }, { op: "| - T_1", isText: false, correct: false }] },
+                            { eq: "\\Delta T + T_1 = T_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - \\Delta T", isText: false, correct: false }] },
+                            { eq: "T_2 = \\Delta T + T_1", options: [] }
+                        ]
+                    },
+                    "T_1": {
+                        steps: [
+                            { eq: "\\Delta T = T_2 - T_1", options: [{ op: "| + T_1", isText: false, correct: true }, { op: "| - T_2", isText: false, correct: false }] },
+                            { eq: "\\Delta T + T_1 = T_2", options: [{ op: "| - \\Delta T", isText: false, correct: true }, { op: "| - T_2", isText: false, correct: false }] },
+                            { eq: "T_1 = T_2 - \\Delta T", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "laenge", level: 1, name: "Maßkette", baseEq: "L = l_1 + l_2 + l_3",
+                targets: {
+                    "l_2": {
+                        steps: [
+                            { eq: "L = l_1 + l_2 + l_3", options: [{ op: "| - l_1", isText: false, correct: true }, { op: "| + l_1", isText: false, correct: false }] },
+                            { eq: "L - l_1 = l_2 + l_3", options: [{ op: "| - l_3", isText: false, correct: true }, { op: "| + l_3", isText: false, correct: false }] },
+                            { eq: "L - l_1 - l_3 = l_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + l_1", isText: false, correct: false }] },
+                            { eq: "l_2 = L - l_1 - l_3", options: [] }
+                        ]
+                    },
+                    "l_1": {
+                        steps: [
+                            { eq: "L = l_1 + l_2 + l_3", options: [{ op: "| - l_2", isText: false, correct: true }, { op: "| + l_2", isText: false, correct: false }] },
+                            { eq: "L - l_2 = l_1 + l_3", options: [{ op: "| - l_3", isText: false, correct: true }, { op: "| + l_3", isText: false, correct: false }] },
+                            { eq: "L - l_2 - l_3 = l_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + l_2", isText: false, correct: false }] },
+                            { eq: "l_1 = L - l_2 - l_3", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "gewinn", level: 1, name: "Gewinn (Erlös - Kosten)", baseEq: "G = E - K",
+                targets: {
+                    "E": {
+                        steps: [
+                            { eq: "G = E - K", options: [{ op: "| + K", isText: false, correct: true }, { op: "| - K", isText: false, correct: false }] },
+                            { eq: "G + K = E", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - G", isText: false, correct: false }] },
+                            { eq: "E = G + K", options: [] }
+                        ]
+                    },
+                    "K": {
+                        steps: [
+                            { eq: "G = E - K", options: [{ op: "| + K", isText: false, correct: true }, { op: "| - E", isText: false, correct: false }] },
+                            { eq: "G + K = E", options: [{ op: "| - G", isText: false, correct: true }, { op: "| + G", isText: false, correct: false }] },
+                            { eq: "K = E - G", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "spannung_reihe", level: 1, name: "Spannung in Reihenschaltung", baseEq: "U_{ges} = U_1 + U_2",
+                targets: {
+                    "U_1": {
+                        steps: [
+                            { eq: "U_{ges} = U_1 + U_2", options: [{ op: "| - U_2", isText: false, correct: true }, { op: "| - U_1", isText: false, correct: false }] },
+                            { eq: "U_{ges} - U_2 = U_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + U_2", isText: false, correct: false }] },
+                            { eq: "U_1 = U_{ges} - U_2", options: [] }
+                        ]
+                    },
+                    "U_2": {
+                        steps: [
+                            { eq: "U_{ges} = U_1 + U_2", options: [{ op: "| - U_1", isText: false, correct: true }, { op: "| - U_2", isText: false, correct: false }] },
+                            { eq: "U_{ges} - U_1 = U_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + U_1", isText: false, correct: false }] },
+                            { eq: "U_2 = U_{ges} - U_1", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "widerstand_reihe", level: 1, name: "Widerstände in Reihe", baseEq: "R_{ges} = R_1 + R_2",
+                targets: {
+                    "R_1": {
+                        steps: [
+                            { eq: "R_{ges} = R_1 + R_2", options: [{ op: "| - R_2", isText: false, correct: true }, { op: "| - R_1", isText: false, correct: false }] },
+                            { eq: "R_{ges} - R_2 = R_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + R_2", isText: false, correct: false }] },
+                            { eq: "R_1 = R_{ges} - R_2", options: [] }
+                        ]
+                    },
+                    "R_2": {
+                        steps: [
+                            { eq: "R_{ges} = R_1 + R_2", options: [{ op: "| - R_1", isText: false, correct: true }, { op: "| - R_2", isText: false, correct: false }] },
+                            { eq: "R_{ges} - R_1 = R_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + R_1", isText: false, correct: false }] },
+                            { eq: "R_2 = R_{ges} - R_1", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "zeit_summe", level: 1, name: "Gesamtzeit", baseEq: "t_{ges} = t_1 + t_2",
+                targets: {
+                    "t_1": {
+                        steps: [
+                            { eq: "t_{ges} = t_1 + t_2", options: [{ op: "| - t_2", isText: false, correct: true }, { op: "| - t_1", isText: false, correct: false }] },
+                            { eq: "t_{ges} - t_2 = t_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + t_2", isText: false, correct: false }] },
+                            { eq: "t_1 = t_{ges} - t_2", options: [] }
+                        ]
+                    },
+                    "t_2": {
+                        steps: [
+                            { eq: "t_{ges} = t_1 + t_2", options: [{ op: "| - t_1", isText: false, correct: true }, { op: "| - t_2", isText: false, correct: false }] },
+                            { eq: "t_{ges} - t_1 = t_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + t_1", isText: false, correct: false }] },
+                            { eq: "t_2 = t_{ges} - t_1", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "kosten_differenz", level: 1, name: "Variable Kosten", baseEq: "K_v = K_{ges} - K_f",
+                targets: {
+                    "K_{ges}": {
+                        steps: [
+                            { eq: "K_v = K_{ges} - K_f", options: [{ op: "| + K_f", isText: false, correct: true }, { op: "| - K_f", isText: false, correct: false }] },
+                            { eq: "K_v + K_f = K_{ges}", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - K_v", isText: false, correct: false }] },
+                            { eq: "K_{ges} = K_v + K_f", options: [] }
+                        ]
+                    },
+                    "K_f": {
+                        steps: [
+                            { eq: "K_v = K_{ges} - K_f", options: [{ op: "| + K_f", isText: false, correct: true }, { op: "| - K_{ges}", isText: false, correct: false }] },
+                            { eq: "K_v + K_f = K_{ges}", options: [{ op: "| - K_v", isText: false, correct: true }, { op: "| + K_v", isText: false, correct: false }] },
+                            { eq: "K_f = K_{ges} - K_v", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "hoehe_delta", level: 1, name: "Höhendifferenz", baseEq: "h = h_2 - h_1",
+                targets: {
+                    "h_2": {
+                        steps: [
+                            { eq: "h = h_2 - h_1", options: [{ op: "| + h_1", isText: false, correct: true }, { op: "| - h_1", isText: false, correct: false }] },
+                            { eq: "h + h_1 = h_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - h", isText: false, correct: false }] },
+                            { eq: "h_2 = h + h_1", options: [] }
+                        ]
+                    },
+                    "h_1": {
+                        steps: [
+                            { eq: "h = h_2 - h_1", options: [{ op: "| + h_1", isText: false, correct: true }, { op: "| - h_2", isText: false, correct: false }] },
+                            { eq: "h + h_1 = h_2", options: [{ op: "| - h", isText: false, correct: true }, { op: "| + h_2", isText: false, correct: false }] },
+                            { eq: "h_1 = h_2 - h", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "bestand", level: 1, name: "Lagerbestand (Zugang)", baseEq: "B_2 = B_1 + Z",
+                targets: {
+                    "B_1": {
+                        steps: [
+                            { eq: "B_2 = B_1 + Z", options: [{ op: "| - Z", isText: false, correct: true }, { op: "| - B_1", isText: false, correct: false }] },
+                            { eq: "B_2 - Z = B_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + Z", isText: false, correct: false }] },
+                            { eq: "B_1 = B_2 - Z", options: [] }
+                        ]
+                    },
+                    "Z": {
+                        steps: [
+                            { eq: "B_2 = B_1 + Z", options: [{ op: "| - B_1", isText: false, correct: true }, { op: "| - Z", isText: false, correct: false }] },
+                            { eq: "B_2 - B_1 = Z", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + B_1", isText: false, correct: false }] },
+                            { eq: "Z = B_2 - B_1", options: [] }
+                        ]
+                    }
+                }
+            },
+
+            // ==========================================
+            // --- STUFE 2: Nur Punktrechnung (* / ÷) ---
+            // ==========================================
+            {
+                id: "ohm", level: 2, name: "Ohmsches Gesetz", baseEq: "U = R \\cdot I",
+                targets: {
+                    "R": {
+                        steps: [
+                            { eq: "U = R \\cdot I", options: [{ op: "| : I", isText: false, correct: true }, { op: "| - I", isText: false, correct: false }] },
+                            { eq: "\\frac{U}{I} = R", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot R", isText: false, correct: false }] },
+                            { eq: "R = \\frac{U}{I}", options: [] }
+                        ]
+                    },
+                    "I": {
+                        steps: [
+                            { eq: "U = R \\cdot I", options: [{ op: "| : R", isText: false, correct: true }, { op: "| - R", isText: false, correct: false }] },
+                            { eq: "\\frac{U}{R} = I", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot I", isText: false, correct: false }] },
+                            { eq: "I = \\frac{U}{R}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "density", level: 2, name: "Dichte", baseEq: "\\rho = \\frac{m}{V}",
+                targets: {
+                    "m": {
+                        steps: [
+                            { eq: "\\rho = \\frac{m}{V}", options: [{ op: "| \\cdot V", isText: false, correct: true }, { op: "| : V", isText: false, correct: false }] },
+                            { eq: "\\rho \\cdot V = m", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| : \\rho", isText: false, correct: false }] },
+                            { eq: "m = \\rho \\cdot V", options: [] }
+                        ]
+                    },
+                    "V": {
+                        steps: [
+                            { eq: "\\rho = \\frac{m}{V}", options: [{ op: "| \\cdot V", isText: false, correct: true }, { op: "| : V", isText: false, correct: false }] },
+                            { eq: "\\rho \\cdot V = m", options: [{ op: "| : \\rho", isText: false, correct: true }, { op: "| - \\rho", isText: false, correct: false }] },
+                            { eq: "V = \\frac{m}{\\rho}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "vc", level: 2, name: "Schnittgeschwindigkeit", baseEq: "v_c = \\frac{\\pi \\cdot d \\cdot n}{1000}",
+                targets: {
+                    "n": {
+                        steps: [
+                            { eq: "v_c = \\frac{\\pi \\cdot d \\cdot n}{1000}", options: [{ op: "| \\cdot 1000", isText: false, correct: true }, { op: "| : 1000", isText: false, correct: false }] },
+                            { eq: "v_c \\cdot 1000 = \\pi \\cdot d \\cdot n", options: [{ op: "| : (\\pi \\cdot d)", isText: false, correct: true }, { op: "| \\cdot \\pi", isText: false, correct: false }] },
+                            { eq: "\\frac{v_c \\cdot 1000}{\\pi \\cdot d} = n", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot n", isText: false, correct: false }] },
+                            { eq: "n = \\frac{v_c \\cdot 1000}{\\pi \\cdot d}", options: [] }
+                        ]
+                    },
+                    "d": {
+                        steps: [
+                            { eq: "v_c = \\frac{\\pi \\cdot d \\cdot n}{1000}", options: [{ op: "| \\cdot 1000", isText: false, correct: true }, { op: "| : n", isText: false, correct: false }] },
+                            { eq: "v_c \\cdot 1000 = \\pi \\cdot d \\cdot n", options: [{ op: "| : (\\pi \\cdot n)", isText: false, correct: true }, { op: "| - \\pi", isText: false, correct: false }] },
+                            { eq: "\\frac{v_c \\cdot 1000}{\\pi \\cdot n} = d", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot d", isText: false, correct: false }] },
+                            { eq: "d = \\frac{v_c \\cdot 1000}{\\pi \\cdot n}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "moment", level: 2, name: "Drehmoment", baseEq: "M = F \\cdot l",
+                targets: {
+                    "F": {
+                        steps: [
+                            { eq: "M = F \\cdot l", options: [{ op: "| : l", isText: false, correct: true }, { op: "| - l", isText: false, correct: false }] },
+                            { eq: "\\frac{M}{l} = F", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot M", isText: false, correct: false }] },
+                            { eq: "F = \\frac{M}{l}", options: [] }
+                        ]
+                    },
+                    "l": {
+                        steps: [
+                            { eq: "M = F \\cdot l", options: [{ op: "| : F", isText: false, correct: true }, { op: "| - F", isText: false, correct: false }] },
+                            { eq: "\\frac{M}{F} = l", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot l", isText: false, correct: false }] },
+                            { eq: "l = \\frac{M}{F}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "leistung", level: 2, name: "Elektrische Leistung", baseEq: "P = U \\cdot I",
+                targets: {
+                    "U": {
+                        steps: [
+                            { eq: "P = U \\cdot I", options: [{ op: "| : I", isText: false, correct: true }, { op: "| - I", isText: false, correct: false }] },
+                            { eq: "\\frac{P}{I} = U", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot U", isText: false, correct: false }] },
+                            { eq: "U = \\frac{P}{I}", options: [] }
+                        ]
+                    },
+                    "I": {
+                        steps: [
+                            { eq: "P = U \\cdot I", options: [{ op: "| : U", isText: false, correct: true }, { op: "| - U", isText: false, correct: false }] },
+                            { eq: "\\frac{P}{U} = I", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot I", isText: false, correct: false }] },
+                            { eq: "I = \\frac{P}{U}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "arbeit", level: 2, name: "Mechanische Arbeit", baseEq: "W = F \\cdot s",
+                targets: {
+                    "F": {
+                        steps: [
+                            { eq: "W = F \\cdot s", options: [{ op: "| : s", isText: false, correct: true }, { op: "| - s", isText: false, correct: false }] },
+                            { eq: "\\frac{W}{s} = F", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot F", isText: false, correct: false }] },
+                            { eq: "F = \\frac{W}{s}", options: [] }
+                        ]
+                    },
+                    "s": {
+                        steps: [
+                            { eq: "W = F \\cdot s", options: [{ op: "| : F", isText: false, correct: true }, { op: "| - F", isText: false, correct: false }] },
+                            { eq: "\\frac{W}{F} = s", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot s", isText: false, correct: false }] },
+                            { eq: "s = \\frac{W}{F}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "geschwindigkeit", level: 2, name: "Geschwindigkeit", baseEq: "s = v \\cdot t",
+                targets: {
+                    "v": {
+                        steps: [
+                            { eq: "s = v \\cdot t", options: [{ op: "| : t", isText: false, correct: true }, { op: "| - t", isText: false, correct: false }] },
+                            { eq: "\\frac{s}{t} = v", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot v", isText: false, correct: false }] },
+                            { eq: "v = \\frac{s}{t}", options: [] }
+                        ]
+                    },
+                    "t": {
+                        steps: [
+                            { eq: "s = v \\cdot t", options: [{ op: "| : v", isText: false, correct: true }, { op: "| - v", isText: false, correct: false }] },
+                            { eq: "\\frac{s}{v} = t", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot t", isText: false, correct: false }] },
+                            { eq: "t = \\frac{s}{v}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "druck", level: 2, name: "Druck", baseEq: "p = \\frac{F}{A}",
+                targets: {
+                    "F": {
+                        steps: [
+                            { eq: "p = \\frac{F}{A}", options: [{ op: "| \\cdot A", isText: false, correct: true }, { op: "| : A", isText: false, correct: false }] },
+                            { eq: "p \\cdot A = F", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| : p", isText: false, correct: false }] },
+                            { eq: "F = p \\cdot A", options: [] }
+                        ]
+                    },
+                    "A": {
+                        steps: [
+                            { eq: "p = \\frac{F}{A}", options: [{ op: "| \\cdot A", isText: false, correct: true }, { op: "| : A", isText: false, correct: false }] },
+                            { eq: "p \\cdot A = F", options: [{ op: "| : p", isText: false, correct: true }, { op: "| : A", isText: false, correct: false }] },
+                            { eq: "A = \\frac{F}{p}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "frequenz", level: 2, name: "Frequenz und Periodendauer", baseEq: "f = \\frac{1}{T}",
+                targets: {
+                    "T": {
+                        steps: [
+                            { eq: "f = \\frac{1}{T}", options: [{ op: "| \\cdot T", isText: false, correct: true }, { op: "| : T", isText: false, correct: false }] },
+                            { eq: "f \\cdot T = 1", options: [{ op: "| : f", isText: false, correct: true }, { op: "| - f", isText: false, correct: false }] },
+                            { eq: "T = \\frac{1}{f}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "ladung", level: 2, name: "Elektrische Ladung", baseEq: "Q = I \\cdot t",
+                targets: {
+                    "I": {
+                        steps: [
+                            { eq: "Q = I \\cdot t", options: [{ op: "| : t", isText: false, correct: true }, { op: "| - t", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{t} = I", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot I", isText: false, correct: false }] },
+                            { eq: "I = \\frac{Q}{t}", options: [] }
+                        ]
+                    },
+                    "t": {
+                        steps: [
+                            { eq: "Q = I \\cdot t", options: [{ op: "| : I", isText: false, correct: true }, { op: "| - I", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{I} = t", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot t", isText: false, correct: false }] },
+                            { eq: "t = \\frac{Q}{I}", options: [] }
+                        ]
+                    }
+                }
+            },
+
+            // ==========================================
+            // --- STUFE 3: Gemischt (Punkt, Strich, Klammern) ---
+            // ==========================================
+            {
+                id: "kosten", level: 3, name: "Gesamtkosten", baseEq: "K = K_f + k_v \\cdot x",
+                targets: {
+                    "x": {
+                        steps: [
+                            { eq: "K = K_f + k_v \\cdot x", options: [{ op: "| - K_f", isText: false, correct: true }, { op: "| : k_v", isText: false, correct: false }] },
+                            { eq: "K - K_f = k_v \\cdot x", options: [{ op: "| : k_v", isText: false, correct: true }, { op: "| - k_v", isText: false, correct: false }] },
+                            { eq: "\\frac{K - K_f}{k_v} = x", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot k_v", isText: false, correct: false }] },
+                            { eq: "x = \\frac{K - K_f}{k_v}", options: [] }
+                        ]
+                    },
+                    "k_v": {
+                        steps: [
+                            { eq: "K = K_f + k_v \\cdot x", options: [{ op: "| - K_f", isText: false, correct: true }, { op: "| : x", isText: false, correct: false }] },
+                            { eq: "K - K_f = k_v \\cdot x", options: [{ op: "| : x", isText: false, correct: true }, { op: "| - x", isText: false, correct: false }] },
+                            { eq: "\\frac{K - K_f}{x} = k_v", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot x", isText: false, correct: false }] },
+                            { eq: "k_v = \\frac{K - K_f}{x}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "geschwindigkeit_beschleunigt", level: 3, name: "Endgeschwindigkeit", baseEq: "v = v_0 + a \\cdot t",
+                targets: {
+                    "t": {
+                        steps: [
+                            { eq: "v = v_0 + a \\cdot t", options: [{ op: "| - v_0", isText: false, correct: true }, { op: "| : a", isText: false, correct: false }] },
+                            { eq: "v - v_0 = a \\cdot t", options: [{ op: "| : a", isText: false, correct: true }, { op: "| - a", isText: false, correct: false }] },
+                            { eq: "\\frac{v - v_0}{a} = t", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot a", isText: false, correct: false }] },
+                            { eq: "t = \\frac{v - v_0}{a}", options: [] }
+                        ]
+                    },
+                    "v_0": {
+                        steps: [
+                            { eq: "v = v_0 + a \\cdot t", options: [{ op: "| - a \\cdot t", isText: false, correct: true }, { op: "| : a", isText: false, correct: false }] },
+                            { eq: "v - a \\cdot t = v_0", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| + a \\cdot t", isText: false, correct: false }] },
+                            { eq: "v_0 = v - a \\cdot t", options: [] }
+                        ]
+                    },
+                    "a": {
+                        steps: [
+                            { eq: "v = v_0 + a \\cdot t", options: [{ op: "| - v_0", isText: false, correct: true }, { op: "| : t", isText: false, correct: false }] },
+                            { eq: "v - v_0 = a \\cdot t", options: [{ op: "| : t", isText: false, correct: true }, { op: "| - t", isText: false, correct: false }] },
+                            { eq: "\\frac{v - v_0}{t} = a", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot t", isText: false, correct: false }] },
+                            { eq: "a = \\frac{v - v_0}{t}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "waerme", level: 3, name: "Wärmemenge", baseEq: "Q = m \\cdot c \\cdot (T_2 - T_1)",
+                targets: {
+                    "T_2": {
+                        steps: [
+                            { eq: "Q = m \\cdot c \\cdot (T_2 - T_1)", options: [{ op: "| : (m \\cdot c)", isText: false, correct: true }, { op: "| - (m \\cdot c)", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{m \\cdot c} = T_2 - T_1", options: [{ op: "| + T_1", isText: false, correct: true }, { op: "| - T_1", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{m \\cdot c} + T_1 = T_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - T_1", isText: false, correct: false }] },
+                            { eq: "T_2 = \\frac{Q}{m \\cdot c} + T_1", options: [] }
+                        ]
+                    },
+                    "T_1": {
+                        steps: [
+                            { eq: "Q = m \\cdot c \\cdot (T_2 - T_1)", options: [{ op: "| : (m \\cdot c)", isText: false, correct: true }, { op: "| - T_2", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{m \\cdot c} = T_2 - T_1", options: [{ op: "| - T_2", isText: false, correct: true }, { op: "| + T_1", isText: false, correct: false }] },
+                            { eq: "\\frac{Q}{m \\cdot c} - T_2 = -T_1", options: [{ op: "| \\cdot (-1)", isText: false, correct: true }, { op: "| : T_1", isText: false, correct: false }] },
+                            { eq: "-\\frac{Q}{m \\cdot c} + T_2 = T_1", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot (-1)", isText: false, correct: false }] },
+                            { eq: "T_1 = T_2 - \\frac{Q}{m \\cdot c}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "umfang_rechteck", level: 3, name: "Umfang Rechteck", baseEq: "u = 2 \\cdot a + 2 \\cdot b",
+                targets: {
+                    "a": {
+                        steps: [
+                            { eq: "u = 2 \\cdot a + 2 \\cdot b", options: [{ op: "| - 2 \\cdot b", isText: false, correct: true }, { op: "| : 2", isText: false, correct: false }] },
+                            { eq: "u - 2 \\cdot b = 2 \\cdot a", options: [{ op: "| : 2", isText: false, correct: true }, { op: "| - 2 \\cdot b", isText: false, correct: false }] },
+                            { eq: "\\frac{u - 2 \\cdot b}{2} = a", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot 2", isText: false, correct: false }] },
+                            { eq: "a = \\frac{u - 2 \\cdot b}{2}", options: [] }
+                        ]
+                    },
+                    "b": {
+                        steps: [
+                            { eq: "u = 2 \\cdot a + 2 \\cdot b", options: [{ op: "| - 2 \\cdot a", isText: false, correct: true }, { op: "| : 2", isText: false, correct: false }] },
+                            { eq: "u - 2 \\cdot a = 2 \\cdot b", options: [{ op: "| : 2", isText: false, correct: true }, { op: "| - 2 \\cdot a", isText: false, correct: false }] },
+                            { eq: "\\frac{u - 2 \\cdot a}{2} = b", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot 2", isText: false, correct: false }] },
+                            { eq: "b = \\frac{u - 2 \\cdot a}{2}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "hebelgesetz", level: 3, name: "Hebelgesetz", baseEq: "F_1 \\cdot l_1 = F_2 \\cdot l_2",
+                targets: {
+                    "F_2": {
+                        steps: [
+                            { eq: "F_1 \\cdot l_1 = F_2 \\cdot l_2", options: [{ op: "| : l_2", isText: false, correct: true }, { op: "| - l_2", isText: false, correct: false }] },
+                            { eq: "\\frac{F_1 \\cdot l_1}{l_2} = F_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot F_2", isText: false, correct: false }] },
+                            { eq: "F_2 = \\frac{F_1 \\cdot l_1}{l_2}", options: [] }
+                        ]
+                    },
+                    "l_2": {
+                        steps: [
+                            { eq: "F_1 \\cdot l_1 = F_2 \\cdot l_2", options: [{ op: "| : F_2", isText: false, correct: true }, { op: "| - F_2", isText: false, correct: false }] },
+                            { eq: "\\frac{F_1 \\cdot l_1}{F_2} = l_2", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot l_2", isText: false, correct: false }] },
+                            { eq: "l_2 = \\frac{F_1 \\cdot l_1}{F_2}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "spannung_innen", level: 3, name: "Spannung mit Innenwiderstand", baseEq: "U = E - I \\cdot r",
+                targets: {
+                    "I": {
+                        steps: [
+                            { eq: "U = E - I \\cdot r", options: [{ op: "| - E", isText: false, correct: true }, { op: "| : r", isText: false, correct: false }] },
+                            { eq: "U - E = -I \\cdot r", options: [{ op: "| \\cdot (-1)", isText: false, correct: true }, { op: "| : r", isText: false, correct: false }] },
+                            { eq: "E - U = I \\cdot r", options: [{ op: "| : r", isText: false, correct: true }, { op: "| - r", isText: false, correct: false }] },
+                            { eq: "\\frac{E - U}{r} = I", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot r", isText: false, correct: false }] },
+                            { eq: "I = \\frac{E - U}{r}", options: [] }
+                        ]
+                    },
+                    "E": {
+                        steps: [
+                            { eq: "U = E - I \\cdot r", options: [{ op: "| + I \\cdot r", isText: false, correct: true }, { op: "| - E", isText: false, correct: false }] },
+                            { eq: "U + I \\cdot r = E", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| - I \\cdot r", isText: false, correct: false }] },
+                            { eq: "E = U + I \\cdot r", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "linear_weg", level: 3, name: "Weg mit Anfangsweg", baseEq: "s = s_0 + v \\cdot t",
+                targets: {
+                    "t": {
+                        steps: [
+                            { eq: "s = s_0 + v \\cdot t", options: [{ op: "| - s_0", isText: false, correct: true }, { op: "| : v", isText: false, correct: false }] },
+                            { eq: "s - s_0 = v \\cdot t", options: [{ op: "| : v", isText: false, correct: true }, { op: "| - v", isText: false, correct: false }] },
+                            { eq: "\\frac{s - s_0}{v} = t", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot v", isText: false, correct: false }] },
+                            { eq: "t = \\frac{s - s_0}{v}", options: [] }
+                        ]
+                    },
+                    "v": {
+                        steps: [
+                            { eq: "s = s_0 + v \\cdot t", options: [{ op: "| - s_0", isText: false, correct: true }, { op: "| : t", isText: false, correct: false }] },
+                            { eq: "s - s_0 = v \\cdot t", options: [{ op: "| : t", isText: false, correct: true }, { op: "| - t", isText: false, correct: false }] },
+                            { eq: "\\frac{s - s_0}{t} = v", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot t", isText: false, correct: false }] },
+                            { eq: "v = \\frac{s - s_0}{t}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "widerstand_spezifisch", level: 3, name: "Spezifischer Widerstand", baseEq: "R = \\rho \\cdot \\frac{l}{A}",
+                targets: {
+                    "l": {
+                        steps: [
+                            { eq: "R = \\rho \\cdot \\frac{l}{A}", options: [{ op: "| \\cdot A", isText: false, correct: true }, { op: "| : \\rho", isText: false, correct: false }] },
+                            { eq: "R \\cdot A = \\rho \\cdot l", options: [{ op: "| : \\rho", isText: false, correct: true }, { op: "| \\cdot A", isText: false, correct: false }] },
+                            { eq: "\\frac{R \\cdot A}{\\rho} = l", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot l", isText: false, correct: false }] },
+                            { eq: "l = \\frac{R \\cdot A}{\\rho}", options: [] }
+                        ]
+                    },
+                    "A": {
+                        steps: [
+                            { eq: "R = \\rho \\cdot \\frac{l}{A}", options: [{ op: "| \\cdot A", isText: false, correct: true }, { op: "| : l", isText: false, correct: false }] },
+                            { eq: "R \\cdot A = \\rho \\cdot l", options: [{ op: "| : R", isText: false, correct: true }, { op: "| \\cdot A", isText: false, correct: false }] },
+                            { eq: "A = \\frac{\\rho \\cdot l}{R}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "arbeit_grund", level: 3, name: "Arbeit mit Grundwert", baseEq: "W = W_0 + F \\cdot s",
+                targets: {
+                    "s": {
+                        steps: [
+                            { eq: "W = W_0 + F \\cdot s", options: [{ op: "| - W_0", isText: false, correct: true }, { op: "| : F", isText: false, correct: false }] },
+                            { eq: "W - W_0 = F \\cdot s", options: [{ op: "| : F", isText: false, correct: true }, { op: "| - F", isText: false, correct: false }] },
+                            { eq: "\\frac{W - W_0}{F} = s", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot F", isText: false, correct: false }] },
+                            { eq: "s = \\frac{W - W_0}{F}", options: [] }
+                        ]
+                    },
+                    "F": {
+                        steps: [
+                            { eq: "W = W_0 + F \\cdot s", options: [{ op: "| - W_0", isText: false, correct: true }, { op: "| : s", isText: false, correct: false }] },
+                            { eq: "W - W_0 = F \\cdot s", options: [{ op: "| : s", isText: false, correct: true }, { op: "| - s", isText: false, correct: false }] },
+                            { eq: "\\frac{W - W_0}{s} = F", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot s", isText: false, correct: false }] },
+                            { eq: "F = \\frac{W - W_0}{s}", options: [] }
+                        ]
+                    }
+                }
+            },
+            {
+                id: "durchmesser_drehen", level: 3, name: "Drehzahl Formel (umgestellt)", baseEq: "n = \\frac{v_c \\cdot 1000}{\\pi \\cdot d}",
+                targets: {
+                    "v_c": {
+                        steps: [
+                            { eq: "n = \\frac{v_c \\cdot 1000}{\\pi \\cdot d}", options: [{ op: "| \\cdot (\\pi \\cdot d)", isText: false, correct: true }, { op: "| : 1000", isText: false, correct: false }] },
+                            { eq: "n \\cdot \\pi \\cdot d = v_c \\cdot 1000", options: [{ op: "| : 1000", isText: false, correct: true }, { op: "| \\cdot \\pi", isText: false, correct: false }] },
+                            { eq: "\\frac{n \\cdot \\pi \\cdot d}{1000} = v_c", options: [{ op: "Seiten tauschen", isText: true, correct: true }, { op: "| \\cdot 1000", isText: false, correct: false }] },
+                            { eq: "v_c = \\frac{n \\cdot \\pi \\cdot d}{1000}", options: [] }
+                        ]
+                    }
+                }
+            }
+        ];
+
+        let currentLevel = 1;
+
+        let currentState = {
+            formulaData: null,
+            targetKey: null,
+            stepIndex: 0
+        };
+
+        const els = {
+            selectionArea: document.getElementById('selection-area'),
+            formulaList: document.getElementById('formula-list'),
+            trainerArea: document.getElementById('trainer-area'),
+            trainerTitle: document.getElementById('trainer-title'),
+            trainerTarget: document.getElementById('trainer-target'),
+            historyContainer: document.getElementById('history-container'),
+            currentEquation: document.getElementById('current-equation'),
+            actionArea: document.getElementById('action-area'),
+            optionsContainer: document.getElementById('options-container'),
+            successArea: document.getElementById('success-area'),
+            feedbackMsg: document.getElementById('feedback-msg')
+        };
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function filterLevel(level) {
+            currentLevel = level;
+            
+            for(let i = 1; i <= 3; i++) {
+                const tab = document.getElementById(`tab-lvl-${i}`);
+                if (i === level) {
+                    tab.classList.remove('bg-slate-200', 'text-slate-600', 'hover:bg-slate-300');
+                    tab.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+                } else {
+                    tab.classList.add('bg-slate-200', 'text-slate-600', 'hover:bg-slate-300');
+                    tab.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+                }
+            }
+            
+            renderFormulaList();
+        }
+
+        function renderFormulaList() {
+            els.formulaList.innerHTML = '';
+            
+            const filteredFormulas = formulaData.filter(f => f.level === currentLevel);
+            
+            filteredFormulas.forEach(f => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow flex flex-col justify-between";
+                
+                const topContent = document.createElement('div');
+                
+                const title = document.createElement('h3');
+                title.className = "text-xl font-bold text-slate-800 mb-4";
+                title.innerText = f.name;
+                topContent.appendChild(title);
+
+                const eqDisplay = document.createElement('div');
+                eqDisplay.className = "text-center mb-6 py-3 bg-slate-50 rounded-lg";
+                topContent.appendChild(eqDisplay);
+                katex.render(f.baseEq, eqDisplay, { displayMode: true });
+
+                card.appendChild(topContent);
+
+                const bottomContent = document.createElement('div');
+                const targetLabel = document.createElement('p');
+                targetLabel.className = "text-sm text-slate-500 font-semibold mb-3";
+                targetLabel.innerText = "Umstellen nach:";
+                bottomContent.appendChild(targetLabel);
+
+                const btnContainer = document.createElement('div');
+                btnContainer.className = "flex flex-wrap gap-2";
+                
+                Object.keys(f.targets).forEach(targetKey => {
+                    const btn = document.createElement('button');
+                    btn.className = "flex-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold py-2 px-3 rounded-lg transition-colors text-sm text-center";
+                    katex.render(targetKey, btn, { displayMode: false });
+                    btn.onclick = () => startTraining(f, targetKey);
+                    btnContainer.appendChild(btn);
+                });
+
+                bottomContent.appendChild(btnContainer);
+                card.appendChild(bottomContent);
+                els.formulaList.appendChild(card);
+            });
+        }
+
+        function initApp() {
+            filterLevel(1);
+        }
+
+        function showSelectionArea() {
+            els.trainerArea.classList.add('hidden');
+            els.selectionArea.classList.remove('hidden');
+        }
+
+        function startTraining(formula, targetKey) {
+            currentState.formulaData = formula;
+            currentState.targetKey = targetKey;
+            currentState.stepIndex = 0;
+
+            els.selectionArea.classList.add('hidden');
+            els.trainerArea.classList.remove('hidden');
+            
+            els.trainerTitle.innerText = formula.name;
+            els.trainerTarget.innerHTML = '';
+            katex.render(targetKey, els.trainerTarget, { displayMode: false });
+
+            els.historyContainer.innerHTML = '';
+            els.successArea.classList.add('hidden');
+            els.actionArea.classList.remove('hidden');
+            els.feedbackMsg.classList.add('hidden');
+
+            renderCurrentStep();
+        }
+
+        function renderCurrentStep() {
+            const stepsArray = currentState.formulaData.targets[currentState.targetKey].steps;
+            const stepData = stepsArray[currentState.stepIndex];
+
+            katex.render(stepData.eq, els.currentEquation, { displayMode: true });
+
+            if (stepData.options.length === 0) {
+                els.actionArea.classList.add('hidden');
+                els.successArea.classList.remove('hidden');
+                return;
+            }
+
+            els.optionsContainer.innerHTML = '';
+            const shuffledOptions = shuffleArray([...stepData.options]);
+
+            shuffledOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 text-slate-700 py-4 px-6 rounded-xl text-lg font-medium shadow-sm transition-all flex justify-center items-center h-16";
+                
+                if (opt.isText) {
+                    btn.innerText = opt.op;
+                } else {
+                    katex.render(opt.op, btn, { displayMode: false });
+                }
+
+                btn.onclick = () => handleOptionClick(opt.correct, opt.op, opt.isText, btn);
+                els.optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleOptionClick(isCorrect, opString, isText, btnElement) {
+            els.feedbackMsg.classList.add('hidden');
+
+            if (isCorrect) {
+                addToHistory(opString, isText);
+                currentState.stepIndex++;
+                renderCurrentStep();
+            } else {
+                btnElement.classList.add('border-red-400', 'bg-red-50', 'text-red-600', 'animate-shake');
+                els.feedbackMsg.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    btnElement.classList.remove('border-red-400', 'bg-red-50', 'text-red-600', 'animate-shake');
+                }, 500);
+            }
+        }
+
+        function addToHistory(opString, isText) {
+            const stepsArray = currentState.formulaData.targets[currentState.targetKey].steps;
+            const previousStepData = stepsArray[currentState.stepIndex];
+
+            const row = document.createElement('div');
+            row.className = "flex items-center justify-between bg-slate-100 p-3 rounded-lg border border-slate-200 text-sm md:text-base fade-in";
+
+            const eqDiv = document.createElement('div');
+            eqDiv.className = "flex-1 overflow-x-auto";
+            katex.render(previousStepData.eq, eqDiv, { displayMode: true });
+
+            const opDiv = document.createElement('div');
+            opDiv.className = "ml-4 bg-indigo-100 text-indigo-800 px-3 py-1 rounded font-medium min-w-[100px] text-center border border-indigo-200";
+            if (isText) {
+                opDiv.innerText = opString;
+            } else {
+                katex.render(opString, opDiv, { displayMode: false });
+            }
+
+            row.appendChild(eqDiv);
+            row.appendChild(opDiv);
+            els.historyContainer.appendChild(row);
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
